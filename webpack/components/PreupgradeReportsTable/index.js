@@ -89,7 +89,8 @@ const PreupgradeReportsTable = ({ data = {} }) => {
     isLeappJob,
     status,
     error,
-    reportId,
+    hasReports,
+    jobInvocationId,
     rows,
     totalCount,
     pagination,
@@ -113,21 +114,21 @@ const PreupgradeReportsTable = ({ data = {} }) => {
 
   useEffect(() => {
     setFixableCount(null);
-  }, [searchValue, reportId]);
+  }, [searchValue, jobInvocationId]);
 
   const searchProps = useMemo(() => {
-    if (!reportId) return null;
+    if (!hasReports || !jobInvocationId) return null;
     const baseProps = getControllerSearchProps('preupgrade_report_entries');
     return {
       ...baseProps,
       autocomplete: {
         ...baseProps.autocomplete,
         url: foremanUrl(
-          `/api/v2/preupgrade_reports/${reportId}/preupgrade_report_entries/auto_complete_search`
+          `/api/v2/preupgrade_report_entries/auto_complete_search?job_invocation_id=${jobInvocationId}`
         ),
       },
     };
-  }, [reportId]);
+  }, [hasReports, jobInvocationId]);
 
   const columns = useMemo(
     () => ({
@@ -203,9 +204,10 @@ const PreupgradeReportsTable = ({ data = {} }) => {
       if (fixableCount === null) {
         dispatch(
           APIActions.get({
-            key: `GET_FIXABLE_COUNT_${reportId}`,
-            url: `/api/v2/preupgrade_reports/${reportId}/preupgrade_report_entries`,
+            key: `GET_FIXABLE_COUNT_${jobInvocationId}`,
+            url: '/api/v2/preupgrade_report_entries',
             params: {
+              job_invocation_id: jobInvocationId,
               search: [searchValue, 'fix_type = command']
                 .filter(Boolean)
                 .join(' AND '),
@@ -226,7 +228,7 @@ const PreupgradeReportsTable = ({ data = {} }) => {
         originalSelectAll(...args);
       }
     },
-    [dispatch, reportId, searchValue, fixableCount, originalSelectAll]
+    [dispatch, jobInvocationId, searchValue, fixableCount, originalSelectAll]
   );
 
   const selectedIds = Array.from(inclusionSet);
@@ -306,12 +308,11 @@ const PreupgradeReportsTable = ({ data = {} }) => {
 
       dispatch(
         APIActions.post({
-          key: `BULK_REMEDIATE_${reportId}`,
-          url: foremanUrl(
-            `/api/v2/preupgrade_reports/${reportId}/preupgrade_report_entries/bulk_remediate`
-          ),
+          key: `BULK_REMEDIATE_${jobInvocationId}`,
+          url: foremanUrl('/api/v2/preupgrade_report_entries/bulk_remediate'),
           params: {
-            search: searchValue,
+            job_invocation_id: jobInvocationId,
+            ...(searchValue && { search: searchValue }),
             excluded_ids: Array.from(exclusionSet),
           },
           handleSuccess: response => {
@@ -416,7 +417,7 @@ const PreupgradeReportsTable = ({ data = {} }) => {
               </ToolbarItem>
             )}
 
-            {reportId && searchProps && (
+            {hasReports && searchProps && (
               <ToolbarItem className="leapp-searchbar-item">
                 <SearchBar
                   data={searchProps}

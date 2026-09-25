@@ -122,6 +122,42 @@ describe('PreupgradeReportsTable', () => {
   const waitForTable = () =>
     waitFor(() => screen.getByText('Report Entry 1', { selector: 'td' }));
 
+  it('loads entries for the whole job invocation when multiple preupgrade reports exist', async () => {
+    const host2Entry = {
+      id: 501,
+      title: 'Host 2 Issue',
+      hostname: 'host2.example.com',
+      host_id: 202,
+      severity: 'medium',
+      detail: {},
+    };
+
+    APIActions.get.mockImplementation(({ key, handleSuccess, params }) => {
+      return () => {
+        if (key.includes('GET_LEAPP_REPORT_LIST')) {
+          handleSuccess({ results: [{ id: 1 }, { id: 2 }] });
+        }
+        if (key.includes('GET_LEAPP_REPORT_ENTRIES')) {
+          expect(params.job_invocation_id).toBe(mockJobId);
+          expect(params.search).toBeUndefined();
+          handleSuccess({
+            results: [host2Entry, ...mockEntries],
+            subtotal: mockEntries.length + 1,
+          });
+        }
+        return { type: 'MOCK_API_SUCCESS' };
+      };
+    });
+
+    renderComponent();
+    expandSection();
+    await waitFor(() =>
+      expect(
+        screen.getByText('Host 2 Issue', { selector: 'td' })
+      ).toBeInTheDocument()
+    );
+  });
+
   it('renders data', async () => {
     renderComponent();
     expandSection();
@@ -570,7 +606,7 @@ describe('PreupgradeReportsTable', () => {
       expect.objectContaining({
         url: expect.stringContaining('/bulk_remediate'),
         params: {
-          search: '',
+          job_invocation_id: mockJobId,
           excluded_ids: [],
         },
       })

@@ -25,7 +25,10 @@ module Api
         N_('Search autocomplete for preupgrade report entries')
       param :search, String, required: false, desc: N_('Search string')
       param :preupgrade_report_id, :identifier, required: false, desc: N_('ID of the preupgrade report')
+      param :job_invocation_id, :identifier, required: false, desc: N_('ID of the job invocation')
 
+      api :POST, '/preupgrade_report_entries/bulk_remediate',
+        N_('Trigger a remediation job for selected preupgrade report entries')
       api :POST, '/preupgrade_reports/:preupgrade_report_id/preupgrade_report_entries/bulk_remediate',
         N_('Trigger a remediation job for selected preupgrade report entries')
       param :search, String, required: false, desc: N_('Search string')
@@ -63,6 +66,12 @@ module Api
       def resource_scope(_options = {})
         scope = if @preupgrade_report
                   @preupgrade_report.preupgrade_report_entries
+                elsif params[:job_invocation_id].present?
+                  PreupgradeReportEntry.where(
+                    preupgrade_report_id: PreupgradeReport.where(
+                      job_invocation_id: params[:job_invocation_id]
+                    ).select(:id)
+                  )
                 else
                   PreupgradeReportEntry
                 end
